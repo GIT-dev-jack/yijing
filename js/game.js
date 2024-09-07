@@ -1,9 +1,35 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// 设置画布大小
-canvas.width = 800;
-canvas.height = 600;
+let scale;
+
+function resizeCanvas() {
+    const containerWidth = window.innerWidth;
+    const containerHeight = window.innerHeight;
+    if (containerWidth === 0 || containerHeight === 0) {
+        console.error('Window has zero width or height. This should never happen.');
+        return;
+    }
+    const containerRatio = containerWidth / containerHeight;
+    const gameRatio = 4 / 3; // 假设原始游戏比例为 4:3
+
+    if (containerRatio > gameRatio) {
+        canvas.height = containerHeight;
+        canvas.width = containerHeight * gameRatio;
+    } else {
+        canvas.width = containerWidth;
+        canvas.height = containerWidth / gameRatio;
+    }
+
+    scale = canvas.width / 800; // 假设原始宽度为800
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    console.log(`Canvas resized. Width: ${canvas.width}, Height: ${canvas.height}, Scale: ${scale}`);
+}
+
+window.addEventListener('resize', () => {
+    console.log('Window resized. Adjusting canvas.');
+    resizeCanvas();
+});
 
 // 定义卦象
 const hexagrams = [
@@ -144,11 +170,11 @@ function drawButton(text, x, y, width, height) {
 }
 
 function showRewardMessage() {
-    drawText("Reward received!", canvas.width / 2, canvas.height / 2, 30, "#FFD700");
+    drawText("Reward received!", 400, 300, 30, "#FFD700");
 }
 
 function showErrorMessage(message = 'An error occurred. Please try again.') {
-    drawText(message, canvas.width / 2, canvas.height / 2, 30, "#FF0000");
+    drawText(message, 400, 300, 30, "#FF0000");
 }
 
 // 动画效果
@@ -174,39 +200,39 @@ function startDivination() {
 
 // 页面绘制函数
 function drawTasksPage() {
-    drawText("任务页面", canvas.width / 2, canvas.height / 2, 40);
+    drawText("任务页面", 400, 300, 40);
     // TODO: 添加任务页面的具体内容
 }
 
 function drawDivinationPage() {
     if (showIntro) {
-        drawText("Taiji Divination", canvas.width / 2, 50, 40);
+        drawText("Taiji Divination", 400, 50, 40);
         introText.forEach((line, i) => {
-            drawText(line, canvas.width / 2, 100 + i * 30, 16);
+            drawText(line, 400, 100 + i * 30, 16);
         });
         drawButton("Start Divination", 300, 500, 200, 50);
     } else {
-        drawText("Taiji Divination", canvas.width / 2, 100, 40);
-        drawText(currentHexagram, canvas.width / 2, 250, 60);
+        drawText("Taiji Divination", 400, 100, 40);
+        drawText(currentHexagram, 400, 250, 60);
         drawButton("Start Divination", 300, 400, 200, 50);
         drawButton("Watch Ad", 300, 470, 200, 50);
     }
 }
 
 function drawStorePage() {
-    drawText("商店页面", canvas.width / 2, canvas.height / 2, 40);
+    drawText("商店页面", 400, 300, 40);
     // TODO: 添加商店页面的具体内容
 }
 
 function drawInvitePage() {
-    drawText("邀请页面", canvas.width / 2, canvas.height / 2, 40);
+    drawText("邀请页面", 400, 300, 40);
     // TODO: 添加邀请页面的具体内容
 }
 
 function drawBottomNav() {
-    const buttonWidth = canvas.width / 4;
+    const buttonWidth = 800 / 4;
     const buttonHeight = 50;
-    const y = canvas.height - buttonHeight;
+    const y = 600 - buttonHeight;
 
     const buttons = [
         { text: "任务", page: "tasks" },
@@ -225,7 +251,11 @@ function drawBottomNav() {
 
 // 游戏主循环
 function gameLoop() {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+
     drawBackground();
 
     switch (activePage) {
@@ -238,13 +268,13 @@ function gameLoop() {
     drawBottomNav();
 
     if (adSDKFailed) {
-        drawText("广告服务暂时不可用", canvas.width / 2, 550, 20, "#FF0000");
+        drawText("广告服务暂时不可用", 400, 550, 20, "#FF0000");
     } else if (!adSDKLoaded) {
-        drawText("正在加载广告服务...", canvas.width / 2, 550, 20, "#FFFF00");
+        drawText("正在加载广告服务...", 400, 550, 20, "#FFFF00");
     }
 
     if (!adInstance) {
-        drawText("Ad service not initialized", canvas.width / 2, 570, 20, "#FFFF00");
+        drawText("Ad service not initialized", 400, 570, 20, "#FFFF00");
     }
 
     requestAnimationFrame(gameLoop);
@@ -253,14 +283,17 @@ function gameLoop() {
 // 事件监听
 canvas.addEventListener('click', (event) => {
     const rect = canvas.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const x = (event.clientX - rect.left) * (800 / rect.width);
+    const y = (event.clientY - rect.top) * (600 / rect.height);
     
-    if (y >= canvas.height - 50) {
-        const buttonWidth = canvas.width / 4;
+    console.log(`Click detected at x: ${x}, y: ${y}`);
+
+    if (y >= 550) {
+        const buttonWidth = 800 / 4;
         const clickedButton = Math.floor(x / buttonWidth);
         const pages = ["tasks", "divination", "store", "invite"];
         activePage = pages[clickedButton];
+        console.log(`Switched to page: ${activePage}`);
         return;
     }
 
@@ -268,6 +301,7 @@ canvas.addEventListener('click', (event) => {
         if (showIntro) {
             if (x >= 300 && x <= 500 && y >= 500 && y <= 550) {
                 showIntro = false;
+                console.log('Intro ended, showing main divination page');
             }
         } else {
             if (x >= 300 && x <= 500 && y >= 400 && y <= 450) {
@@ -300,8 +334,18 @@ const introText = [
 ];
 
 // 初始化
-window.addEventListener('load', () => {
-    console.log('Window loaded, initializing game');
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM fully loaded and parsed');
+    if (!document.getElementById('gameCanvas')) {
+        console.error('gameCanvas element not found in the DOM');
+        return;
+    }
+    resizeCanvas();
     loadAdSDK();
     gameLoop();
+});
+
+window.addEventListener('load', () => {
+    console.log('Window loaded, initializing game');
+    resizeCanvas(); // 再次调用以确保正确大小
 });
